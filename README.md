@@ -1,12 +1,40 @@
-# a-o-a — Jira tickets hub for Claude Code
+# a-o-a — agent of agents
 
-A small hub for working Jira tickets with Claude Code: a Jira CLI, three agents (planner, coder, reviewer),
-three skills that drive them, and a local knowledge base that is never committed.
+One hub you talk to. It sends specialised agents out to plan, build, review and ship Jira tickets, and reports back.
+You decide at the gates; no agent starts on its own, and nothing is pushed, deployed or sent without your go.
 
-The CLI fetches your Jira Cloud tickets and can post a comment. Nothing else is written. No dependencies beyond
-the Python standard library. Meant for you and for agents that need ticket context.
+## Principles
 
-## Setup
+- **Simple.** Plain markdown files, one small Python CLI, no dependencies beyond the standard library. Every agent has one job and a short brief.
+- **Always the repo.** Every agent works in exactly one named repo and worktree. A repo is never guessed: it comes from your note (`repo: <path>`) or from a clone whose branch contains the ticket key.
+- **Connections are known.** How repos and projects depend on each other is written down (`wiki/connections.md`: who calls whom, what must be released first) and every agent reads it before touching a repo that has a neighbour.
+- **Knowledge stays.** What a ticket taught goes into the wiki, so the next agent does not start from zero.
+
+## Agents
+
+| Agent | Job | State |
+|---|---|---|
+| planner | Turns a ticket into a plan: problem, solution, repo and files, open questions | built |
+| coder | Implements the plan test-first in a git worktree. Never commits | built |
+| reviewer | Checks the diff against the plan, verdict OK or FIX | built |
+| scout | Maps where work sits: folder, branch, uncommitted and unpushed work per ticket | planned |
+| watcher | Reads pipelines and merge requests, reports red jobs and stuck MRs | planned |
+| releaser | Compares develop, stage and main across connected repos, prepares merges and release notes | planned |
+| verifier | Checks stage or live read-only after a deploy against what the release claims | planned |
+| fixer | Writes one-off data scripts in the dry-run / apply pattern, runs stage, hands over the live command | planned |
+| tester | Clicks through a change in the browser on stage | planned |
+| scribe | Turns the day's work into time entries, chat messages and ticket comments | planned |
+| librarian | Keeps the wiki current: ingest, lint | planned |
+
+Chains: a ticket runs planner → coder → reviewer today. The goal is to continue with
+releaser → watcher → verifier → scribe → librarian, stopping at every gate.
+
+## Jira CLI
+
+The CLI fetches your Jira Cloud tickets and can post a comment. Nothing else is written. Meant for you and for
+agents that need ticket context.
+
+### Setup
 
 Create an API token at https://id.atlassian.com/manage-profile/security/api-tokens
 and put it in `.env` next to `main.py` (git-ignored), or export the same vars in
@@ -18,7 +46,7 @@ JIRA_EMAIL=you@example.com
 JIRA_API_TOKEN=...
 ```
 
-## Usage
+### Usage
 
 ```sh
 uv run main.py mytickets            # open tickets assigned to you, as a table
@@ -38,7 +66,7 @@ snapshot, so a quiet morning costs one request.
 
 Exit codes: `0` ok, `1` Jira/HTTP error (message on stderr), `2` missing env var.
 
-## Tests
+### Tests
 
 ```sh
 uv run pytest
@@ -77,5 +105,6 @@ content, the folders ship empty. Nothing about your tickets, customers or system
 | `tickets/snapshot.json` | Last ticket state, used by `sync` to report what changed |
 | `briefs/YYYY-MM-DD.md` | Daily brief: changes since last sync, ticket table, open questions |
 | `wiki/` | Project info, decisions and incoming requests that outlive a ticket. Markdown, one topic per file. No time tracking, no credentials, no personal data |
+| `wiki/connections.md` | Which repo calls or consumes which, project-to-repo map, release order. Agents read it before touching a repo that has a neighbour |
 
 Keep it out of git on purpose: back it up with your own means if you need history.
