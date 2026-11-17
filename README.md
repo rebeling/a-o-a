@@ -5,25 +5,87 @@ You decide at the gates; no agent starts on its own, and nothing is pushed, depl
 
 ## Quick start
 
-Needs [uv](https://docs.astral.sh/uv/), [Claude Code](https://docs.claude.com/en/docs/claude-code) and a Jira Cloud API token.
+Needs [Claude Code](https://docs.claude.com/en/docs/claude-code), [uv](https://docs.astral.sh/uv/) and a
+[Jira Cloud API token](https://id.atlassian.com/manage-profile/security/api-tokens).
 
 ```sh
 git clone https://github.com/rebeling/a-o-a.git ~/Desktop/a-o-a
 cd ~/Desktop/a-o-a
-cp /dev/null .env && chmod 600 .env       # then fill in the three JIRA_* lines (see Jira CLI below)
-uv run main.py mytickets                  # check: your open tickets as a table
+cat > .env <<'EOF'
+JIRA_BASE_URL=https://your-site.atlassian.net
+JIRA_EMAIL=you@example.com
+JIRA_API_TOKEN=...
+EOF
 mkdir -p ~/.claude/skills && ln -s "$PWD/.claude/skills/aoa-report" ~/.claude/skills/aoa-report
-claude                                    # then type /aoa-brief
+claude
 ```
 
-The `aoa-report` link makes `/aoa-report` available in every repo, so ticket sessions can report back to the hub.
-It writes to `~/Desktop/a-o-a/tickets/`; clone somewhere else → change that path in `.claude/skills/aoa-report/SKILL.md`
-and `.claude/skills/aoa-session/SKILL.md`.
+In Claude, type `/aoa-brief`. That is the start of every day.
 
-Then, once:
-- list your local clones in `tickets/repos.md` (one per line: key prefix, path, remote, what it is), so no agent guesses a repo;
-- change the time-tracking key prefix `TIME-` in `CLAUDE.md` and the skills to yours, or leave it;
-- fill the "Known sites" table in `.claude/agents/error-log.md` if you want `/aoa-error`.
+Once, so agents never guess:
+- `tickets/repos.md`: your local clones, one per line (key prefix, path, remote, what it is).
+- `TIME-` in `CLAUDE.md` and the skills: the key prefix of your time-tracking buckets, which are skipped.
+- "Known sites" in `.claude/agents/error-log.md`: server, docroot and clone per site, if you want `/aoa-error`.
+
+`/aoa-report` and `/aoa-session` assume the hub lives at `~/Desktop/a-o-a`. Cloned elsewhere → change that path in
+`.claude/skills/aoa-report/SKILL.md` and `.claude/skills/aoa-session/SKILL.md`.
+
+## Workflow
+
+### Morning: `/aoa-brief`
+
+Syncs your Jira tickets, shows what changed since yesterday, qualifies every ticket and writes `briefs/YYYY-MM-DD.md`.
+It plans nothing and starts nothing; it tells you what is next.
+
+```
+| Key    | Title                       | Status      | Prio | Qual      | Next step              |
+|--------|-----------------------------|-------------|------|-----------|------------------------|
+| TODO-3 | Speed up deploy             | —           | —    | —         | In progress (own session) |
+| ABC-12 | Export fails for big orders | In Progress | High | REPORTED  | Test on stage          |
+| ABC-15 | Add VAT field to invoice    | To Do       | High | READY     | Ready to implement     |
+| ABC-17 | Newsletter per region       | To Do       | Med  | BLOCKED   | Clarify 2 questions    |
+| XYZ-4  | Login loop on mobile        | To Do       | Med  | UNPLANNED | Plan it                |
+```
+
+| Qual | Meaning | You do |
+|---|---|---|
+| `UNPLANNED` | No plan file yet | `/aoa-ticket-planner KEY` |
+| `NO-REPO` | Plan exists, no clone named | `/aoa-brief KEY: repo <path>` |
+| `BLOCKED` | Open questions for the ticket writer | Answer: `/aoa-brief KEY: <answer>` |
+| `READY` | Plan complete, repo known | `/aoa-work KEY` or `/aoa-session KEY` |
+| `REPORTED` | A ticket session reported a milestone | Next step comes from that report |
+| `FEEDBACK` | Implemented and reviewed OK | Wait for stage test or ticket writer |
+
+Below the table the brief lists the open questions and every running session with its `claude --resume <id>` line.
+
+Talk to the hub in plain words during the day: "done ABC-12", "ABC-17 next week", "new todo: check backups".
+Work without a Jira ticket becomes `TODO-1`, `TODO-2`, … in the brief. These keys stay local: never in commits,
+merge requests, pushed branch names or Jira comments. Run `/aoa-brief` again any time to refresh.
+
+### Plan, then work
+
+1. `/aoa-ticket-planner KEY` writes `tickets/KEY.md`: what, problem, solution, repo and files, open questions.
+2. Decisions and answers go in with `/aoa-brief KEY: <note>`; they override the ticket text and re-plan it.
+3. Then either:
+   - `/aoa-work KEY`: coder implements test-first in a git worktree, reviewer checks against the plan, max two rounds; or
+   - `/aoa-session KEY`: worktree one-liner plus first message for a separate Claude session that you drive yourself.
+4. In the ticket session, after each milestone (implemented, pushed, stage, live): `/aoa-report KEY`. The next brief
+   shows it as `REPORTED` with its next step.
+5. You commit, push and deploy. Nothing is committed by an agent.
+
+### Hub and ticket sessions
+
+Keep one Claude session in this folder as the hub: brief, planning, notes, wiki. Each ticket runs in its own session
+and worktree and reports back with `/aoa-report`. The hub stays small and you can switch between tickets without
+losing context.
+
+### On demand
+
+| Command | What it does |
+|---|---|
+| `/aoa-error <pasted log>` | `error-log` agent reads the server logs read-only and the code, writes cause and suggested fix to `errors/<slug>.md`. `/aoa-error list`, `/aoa-error fixed <slug>`. Never fixes. |
+| `/aoa-wiki <question>` | Answers from the wiki. Also `ingest [KEY\|today]`, `decision: ...`, `request: ...`, `lint`. Schema: `wiki/README.md`. |
+| `/aoa-brief tempo` | Brief plus time entries; expects a `reporter` agent of your own (not in this repo). |
 
 ## Principles
 
@@ -40,6 +102,7 @@ Then, once:
 | coder | Implements the plan test-first in a git worktree. Never commits | built |
 | reviewer | Checks the diff against the plan, verdict OK or FIX | built |
 | error-log | Reads a pasted prod error, the server logs (read-only) and the code; writes cause and suggested fix. Never fixes | built |
+| librarian | Keeps the wiki current: query, ingest, lint (`/aoa-wiki`, skill for now) | partly |
 | scout | Maps where work sits: folder, branch, uncommitted and unpushed work per ticket | planned |
 | watcher | Reads pipelines and merge requests, reports red jobs and stuck MRs | planned |
 | releaser | Compares develop, stage and main across connected repos, prepares merges and release notes | planned |
@@ -47,84 +110,9 @@ Then, once:
 | fixer | Writes one-off data scripts in the dry-run / apply pattern, runs stage, hands over the live command | planned |
 | tester | Clicks through a change in the browser on stage | planned |
 | scribe | Turns the day's work into time entries, chat messages and ticket comments | planned |
-| librarian | Keeps the wiki current: query, ingest, lint (`/aoa-wiki`, skill for now) | partly |
 
 Chains: a ticket runs planner → coder → reviewer today. The goal is to continue with
 releaser → watcher → verifier → scribe → librarian, stopping at every gate.
-
-## Jira CLI
-
-The CLI fetches your Jira Cloud tickets and can post a comment. Nothing else is written. Meant for you and for
-agents that need ticket context.
-
-### Setup
-
-Create an API token at https://id.atlassian.com/manage-profile/security/api-tokens
-and put it in `.env` next to `main.py` (git-ignored), or export the same vars in
-your shell (shell wins over `.env`):
-
-```sh
-JIRA_BASE_URL=https://your-site.atlassian.net
-JIRA_EMAIL=you@example.com
-JIRA_API_TOKEN=...
-```
-
-### Usage
-
-```sh
-uv run main.py mytickets            # open tickets assigned to you, as a table
-uv run main.py mytickets --json     # same, as JSON
-uv run main.py get ABC-12 ABC-13    # full details as markdown
-uv run main.py get ABC-12 --json    # same, as JSON
-uv run main.py sync                 # what changed since last run; keeps tickets/snapshot.json
-uv run main.py sync --json          # {"new": [...], "gone": [...], "changed": [{key, fields}], "unchanged": [...]}
-uv run main.py comment ABC-12 "text" # post a comment; "-" reads the text from stdin. The only write.
-```
-
-`sync` fetches details only for tickets whose Jira `updated` stamp differs from the
-snapshot, so a quiet morning costs one request.
-
-`mytickets` uses the JQL
-`assignee = currentUser() AND statusCategory != Done ORDER BY priority ASC, updated DESC`.
-
-Exit codes: `0` ok, `1` Jira/HTTP error (message on stderr), `2` missing env var.
-
-### Tests
-
-```sh
-uv run pytest
-```
-
-## Workflow
-
-Run Claude Code in this folder. `CLAUDE.md` holds the rules; agents live in `.claude/agents/`, skills in `.claude/skills/`.
-
-| Command | What it does |
-|---|---|
-| `/aoa-brief` | Morning: syncs tickets, lists and qualifies all, writes `briefs/YYYY-MM-DD.md`. Plans nothing. |
-| `/aoa-brief KEY: note` | Records a decision for one ticket in `tickets/KEY.notes.md` and re-plans it. |
-| `/aoa-ticket-planner KEY` | Turns a ticket into a plan file `tickets/KEY.md`. |
-| `/aoa-work KEY` | Coder implements the plan in a git worktree, reviewer checks it. Max two rounds. Nothing is committed. |
-| `/aoa-session KEY` | Prints the worktree one-liner and the first message to work a ticket in its own Claude session. |
-| `/aoa-report KEY [note]` | Run inside a ticket session after a milestone (implemented, pushed, stage, live): appends a `REPORT` line to the hub's `tickets/KEY.notes.md`. |
-| `/aoa-error <pasted log>` | `error-log` agent explains a prod error and writes `errors/<slug>.md`. `/aoa-error list`, `/aoa-error fixed <slug>`. |
-| `/aoa-wiki <question>` | Answers from the wiki. Also `ingest [KEY\|today]`, `decision: ...`, `request: ...`, `lint`. Schema: `wiki/README.md`. |
-
-### Hub and ticket sessions
-
-Keep one Claude session in this folder as the hub: brief, planning, notes, wiki. Each ticket gets its own session in
-its own worktree (`/aoa-session KEY`), which reports back with `/aoa-report`. The brief lists all sessions with their
-`claude --resume <id>` line, so you can jump back into any of them.
-
-Work without a Jira ticket goes into the brief as `TODO-1`, `TODO-2`, … (just tell the hub). These keys are local:
-they never appear in commits, merge requests, pushed branch names or Jira comments.
-
-Qualification in the brief: `UNPLANNED` (no plan), `READY`, `BLOCKED` (open questions), `NO-REPO` (no clone named),
-`FEEDBACK` (reviewed OK, waiting), `REPORTED` (a ticket session reported; next step comes from that report).
-
-Tickets whose key starts with `TIME-` are treated as time-tracking buckets and skipped; change the prefix in
-`CLAUDE.md` and the skills to match yours. `/aoa-brief tempo` expects a `reporter` agent of your own that turns
-git history into time entries; it is not part of this repo.
 
 ## Knowledge base
 
@@ -134,7 +122,7 @@ content, the folders ship empty. Nothing about your tickets, customers or system
 | Path | Content |
 |---|---|
 | `tickets/KEY.md` | Plan: what the ticket is about, problem, solution, repo and files, open questions |
-| `tickets/KEY.notes.md` | Your notes and decisions, dated, one line each. Overrides the ticket text. Special forms: `repo: <path>`, `base: <branch>`, `branch: <branch>` |
+| `tickets/KEY.notes.md` | Your notes and decisions, dated, one line each; reports from ticket sessions. Overrides the ticket text. Special forms: `repo: <path>`, `base: <branch>`, `branch: <branch>` |
 | `tickets/KEY.done.md` | Coder report: what changed, tests run |
 | `tickets/KEY.review.md` | Reviewer verdict `OK` or `FIX` with open items |
 | `tickets/repos.md` | Known local clones, one per line, so no agent has to guess a repo |
@@ -145,3 +133,20 @@ content, the folders ship empty. Nothing about your tickets, customers or system
 | `wiki/connections.md` | Which repo calls or consumes which, project-to-repo map, release order. Agents read it before touching a repo that has a neighbour |
 
 Keep it out of git on purpose: back it up with your own means if you need history.
+
+## Jira CLI (under the hood)
+
+The skills call `main.py`; you rarely need it directly. It reads Jira Cloud and can post a comment, nothing else.
+Credentials come from `.env` next to `main.py` (git-ignored) or the same variables in your shell (shell wins).
+
+```sh
+uv run main.py mytickets [--json]          # open tickets assigned to you
+uv run main.py get ABC-12 [ABC-13] [--json] [--comments]
+uv run main.py sync [--json]               # new / gone / changed since last run; keeps tickets/snapshot.json
+uv run main.py comment ABC-12 "text"       # the only write; "-" reads the text from stdin
+uv run pytest                              # tests
+```
+
+`sync` fetches details only for tickets whose `updated` stamp changed, so a quiet morning costs one request.
+`mytickets` uses `assignee = currentUser() AND statusCategory != Done ORDER BY priority ASC, updated DESC`.
+Exit codes: `0` ok, `1` Jira/HTTP error, `2` missing env var.
