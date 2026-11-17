@@ -14,6 +14,7 @@ Repo root is the directory containing `main.py`. Run all commands from there.
 2. Never dispatch `ticket-planner` here. Planning is the user's call via `/aoa-ticket-planner KEY`. In the changes line, name every ticket that needs it: "KEY has no plan, run /aoa-ticket-planner KEY" for a missing `tickets/KEY.md`; "KEY changed/has new notes, run /aoa-ticket-planner KEY" when the ticket is in `changed` or `tickets/KEY.notes.md` is newer than the plan.
 3. Qualify every open ticket from its plan file:
    - UNPLANNED if `tickets/KEY.md` is missing (checked first)
+   - REPORTED if the newest entry in `tickets/KEY.notes.md` is a `REPORT` line (from `/aoa-report` in a ticket session) newer than the plan; next step = its `Next:`
    - FEEDBACK if `tickets/KEY.review.md` exists and its verdict is OK
    - NO-REPO if "Repo and files" says unknown and `tickets/KEY.notes.md` has no `repo:` line. A `repo:` note counts as answered; the "which repo" question then no longer counts as open.
    - BLOCKED if "Open questions for the ticket writer" is not "None." (after dropping questions answered in the notes)
@@ -24,6 +25,7 @@ Repo root is the directory containing `main.py`. Run all commands from there.
    - READY → `Ready to implement`
    - BLOCKED → `Clarify N questions` (N = count of open questions)
    - NO-REPO → `Name the repo`
+   - REPORTED → the report's `Next:`
    Commands live in the legend, not in the table.
 
 4. Tempo only when asked (`/aoa-brief tempo`, or the user says "with tempo" / "time"): dispatch the `reporter` agent: "tempo entries since the last working day for these repos: <every distinct non-empty path in tickets/repos.md>". These are separate clones; the reporter handles each as its own repo. Print the reporter's table in the terminal after the brief summary; it never goes into the brief file.
@@ -34,7 +36,7 @@ Repo root is the directory containing `main.py`. Run all commands from there.
    Jira: <base>/jira/for-you?tab=assigned   (base = any ticket url up to the host, e.g. https://your-site.atlassian.net)
 
    ## Changes since last sync
-   New: ... · Gone: ... · Changed: KEY field old -> new (one line per change; description changes just say "description changed")
+   New: ... · Gone: KEY (+ last REPORT state, or "no report from ticket session") · Changed: KEY field old -> new (one line per change; description changes just say "description changed")
    or: Nothing changed.
 
    | Key | Title | Status | Prio | Qual | Next step |
@@ -53,8 +55,11 @@ Repo root is the directory containing `main.py`. Run all commands from there.
    ### KEY — summary
    1. ...
 
+   ## Sessions
+   (one code block; per ticket session a comment line `# KEY  short title` and the line `cd <workdir> && claude --resume <session id>`; hub session last. Session id = name of the newest `*.jsonl` in `~/.claude/projects/<workdir with / replaced by ->/`. Workdirs: from `session started` / `REPORT` notes in `tickets/KEY.notes.md` and other sessions active since the last brief. Only sessions whose transcript exists; never invent an id.)
+
    ```
-6. Print to the terminal: the changes line, the table, the legend line, the count of UNPLANNED/FEEDBACK/READY/BLOCKED/NO-REPO, and the brief path. Nothing else.
+6. Print to the terminal: the changes line, the table, the legend line, the count of UNPLANNED/FEEDBACK/READY/BLOCKED/NO-REPO, the Sessions code block, and the brief path. Nothing else.
 
 ## Mode A with argument `tempo`
 

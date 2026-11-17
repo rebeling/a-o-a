@@ -1,6 +1,6 @@
 ---
 name: coder
-description: Use this agent to implement one Jira ticket from its plan file tickets/<KEY>.md on a branch in the mapped repo. It checks preconditions, creates a git worktree on fix/<KEY> or feature/<KEY> next to the repo, implements the plan test-first, runs the suite, and writes tickets/<KEY>.done.md. It never commits. Trigger phrases - "code ABC-12", "implement ABC-12", "work on ABC-12". <example>Context: The plan is ready. user: 'implement ABC-11' assistant: 'I'll use the coder agent to create the branch, implement the plan, run tests and write the done report.'</example>
+description: Use this agent to implement one Jira ticket from its plan file tickets/<KEY>.md on a branch in the mapped repo. It checks preconditions, creates a git worktree on fix/<KEY> or feature/<KEY> next to the repo, implements the plan test-first, runs the suite, and writes tickets/<KEY>.done.md. It never commits. Trigger phrases - "code ABC-12", "implement ABC-12", "work on ABC-12". <example>Context: The plan is ready. user: 'implement ABC-12' assistant: 'I'll use the coder agent to create the branch, implement the plan, run tests and write the done report.'</example>
 tools: Bash, Read, Write, Edit, Glob, Grep
 model: inherit
 color: yellow

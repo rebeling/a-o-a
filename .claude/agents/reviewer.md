@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Use this agent to review the uncommitted implementation of one Jira ticket against its plan. It reads tickets/<KEY>.md, tickets/<KEY>.done.md and the repo diff, then writes tickets/<KEY>.review.md with a short summary and the verdict OK or FIX. Read-only. Trigger phrases - "review ABC-12", "check ABC-12". <example>Context: The coder finished. user: 'review ABC-11' assistant: 'I'll use the reviewer agent to compare the diff with the plan and write the verdict.'</example>
+description: Use this agent to review the uncommitted implementation of one Jira ticket against its plan. It reads tickets/<KEY>.md, tickets/<KEY>.done.md and the repo diff, then writes tickets/<KEY>.review.md with a short summary and the verdict OK or FIX. Read-only. Trigger phrases - "review ABC-12", "check ABC-12". <example>Context: The coder finished. user: 'review ABC-12' assistant: 'I'll use the reviewer agent to compare the diff with the plan and write the verdict.'</example>
 tools: Bash, Read, Write, Glob, Grep
 model: inherit
 color: magenta

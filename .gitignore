@@ -20,5 +20,10 @@ wiki/*
 !tickets/.gitkeep
 !briefs/.gitkeep
 !wiki/.gitkeep
+!wiki/README.md
+errors/*
+!errors/.gitkeep
+reviews/
+sessions.md
 
 .pytest_cache/

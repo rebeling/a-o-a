@@ -3,6 +3,28 @@
 One hub you talk to. It sends specialised agents out to plan, build, review and ship Jira tickets, and reports back.
 You decide at the gates; no agent starts on its own, and nothing is pushed, deployed or sent without your go.
 
+## Quick start
+
+Needs [uv](https://docs.astral.sh/uv/), [Claude Code](https://docs.claude.com/en/docs/claude-code) and a Jira Cloud API token.
+
+```sh
+git clone https://github.com/rebeling/a-o-a.git ~/Desktop/a-o-a
+cd ~/Desktop/a-o-a
+cp /dev/null .env && chmod 600 .env       # then fill in the three JIRA_* lines (see Jira CLI below)
+uv run main.py mytickets                  # check: your open tickets as a table
+mkdir -p ~/.claude/skills && ln -s "$PWD/.claude/skills/aoa-report" ~/.claude/skills/aoa-report
+claude                                    # then type /aoa-brief
+```
+
+The `aoa-report` link makes `/aoa-report` available in every repo, so ticket sessions can report back to the hub.
+It writes to `~/Desktop/a-o-a/tickets/`; clone somewhere else → change that path in `.claude/skills/aoa-report/SKILL.md`
+and `.claude/skills/aoa-session/SKILL.md`.
+
+Then, once:
+- list your local clones in `tickets/repos.md` (one per line: key prefix, path, remote, what it is), so no agent guesses a repo;
+- change the time-tracking key prefix `TIME-` in `CLAUDE.md` and the skills to yours, or leave it;
+- fill the "Known sites" table in `.claude/agents/error-log.md` if you want `/aoa-error`.
+
 ## Principles
 
 - **Simple.** Plain markdown files, one small Python CLI, no dependencies beyond the standard library. Every agent has one job and a short brief.
@@ -17,6 +39,7 @@ You decide at the gates; no agent starts on its own, and nothing is pushed, depl
 | planner | Turns a ticket into a plan: problem, solution, repo and files, open questions | built |
 | coder | Implements the plan test-first in a git worktree. Never commits | built |
 | reviewer | Checks the diff against the plan, verdict OK or FIX | built |
+| error-log | Reads a pasted prod error, the server logs (read-only) and the code; writes cause and suggested fix. Never fixes | built |
 | scout | Maps where work sits: folder, branch, uncommitted and unpushed work per ticket | planned |
 | watcher | Reads pipelines and merge requests, reports red jobs and stuck MRs | planned |
 | releaser | Compares develop, stage and main across connected repos, prepares merges and release notes | planned |
@@ -24,7 +47,7 @@ You decide at the gates; no agent starts on its own, and nothing is pushed, depl
 | fixer | Writes one-off data scripts in the dry-run / apply pattern, runs stage, hands over the live command | planned |
 | tester | Clicks through a change in the browser on stage | planned |
 | scribe | Turns the day's work into time entries, chat messages and ticket comments | planned |
-| librarian | Keeps the wiki current: ingest, lint | planned |
+| librarian | Keeps the wiki current: query, ingest, lint (`/aoa-wiki`, skill for now) | partly |
 
 Chains: a ticket runs planner → coder → reviewer today. The goal is to continue with
 releaser → watcher → verifier → scribe → librarian, stopping at every gate.
@@ -82,9 +105,22 @@ Run Claude Code in this folder. `CLAUDE.md` holds the rules; agents live in `.cl
 | `/aoa-brief KEY: note` | Records a decision for one ticket in `tickets/KEY.notes.md` and re-plans it. |
 | `/aoa-ticket-planner KEY` | Turns a ticket into a plan file `tickets/KEY.md`. |
 | `/aoa-work KEY` | Coder implements the plan in a git worktree, reviewer checks it. Max two rounds. Nothing is committed. |
+| `/aoa-session KEY` | Prints the worktree one-liner and the first message to work a ticket in its own Claude session. |
+| `/aoa-report KEY [note]` | Run inside a ticket session after a milestone (implemented, pushed, stage, live): appends a `REPORT` line to the hub's `tickets/KEY.notes.md`. |
+| `/aoa-error <pasted log>` | `error-log` agent explains a prod error and writes `errors/<slug>.md`. `/aoa-error list`, `/aoa-error fixed <slug>`. |
+| `/aoa-wiki <question>` | Answers from the wiki. Also `ingest [KEY\|today]`, `decision: ...`, `request: ...`, `lint`. Schema: `wiki/README.md`. |
+
+### Hub and ticket sessions
+
+Keep one Claude session in this folder as the hub: brief, planning, notes, wiki. Each ticket gets its own session in
+its own worktree (`/aoa-session KEY`), which reports back with `/aoa-report`. The brief lists all sessions with their
+`claude --resume <id>` line, so you can jump back into any of them.
+
+Work without a Jira ticket goes into the brief as `TODO-1`, `TODO-2`, … (just tell the hub). These keys are local:
+they never appear in commits, merge requests, pushed branch names or Jira comments.
 
 Qualification in the brief: `UNPLANNED` (no plan), `READY`, `BLOCKED` (open questions), `NO-REPO` (no clone named),
-`FEEDBACK` (reviewed OK, waiting).
+`FEEDBACK` (reviewed OK, waiting), `REPORTED` (a ticket session reported; next step comes from that report).
 
 Tickets whose key starts with `TIME-` are treated as time-tracking buckets and skipped; change the prefix in
 `CLAUDE.md` and the skills to match yours. `/aoa-brief tempo` expects a `reporter` agent of your own that turns
@@ -103,7 +139,8 @@ content, the folders ship empty. Nothing about your tickets, customers or system
 | `tickets/KEY.review.md` | Reviewer verdict `OK` or `FIX` with open items |
 | `tickets/repos.md` | Known local clones, one per line, so no agent has to guess a repo |
 | `tickets/snapshot.json` | Last ticket state, used by `sync` to report what changed |
-| `briefs/YYYY-MM-DD.md` | Daily brief: changes since last sync, ticket table, open questions |
+| `briefs/YYYY-MM-DD.md` | Daily brief: changes since last sync, ticket table, open questions, sessions |
+| `errors/<slug>.md`, `errors/index.md` | Prod error reports from `/aoa-error`: cause, evidence, suggested fix, status |
 | `wiki/` | Project info, decisions and incoming requests that outlive a ticket. Markdown, one topic per file. No time tracking, no credentials, no personal data |
 | `wiki/connections.md` | Which repo calls or consumes which, project-to-repo map, release order. Agents read it before touching a repo that has a neighbour |
 
