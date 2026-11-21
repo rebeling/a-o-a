@@ -1,4 +1,4 @@
-# a-o-a — agent of agents
+# aoa — agent of agents
 
 One hub you talk to. It sends specialised agents out to plan, build, review and ship Jira tickets, and reports back.
 You decide at the gates; no agent starts on its own, and nothing is pushed, deployed or sent without your go.
@@ -9,8 +9,8 @@ Needs [Claude Code](https://docs.claude.com/en/docs/claude-code), [uv](https://d
 [Jira Cloud API token](https://id.atlassian.com/manage-profile/security/api-tokens).
 
 ```sh
-git clone https://github.com/rebeling/a-o-a.git ~/Desktop/a-o-a
-cd ~/Desktop/a-o-a
+git clone https://github.com/rebeling/aoa.git ~/Desktop/aoa
+cd ~/Desktop/aoa
 cat > .env <<'EOF'
 JIRA_BASE_URL=https://your-site.atlassian.net
 JIRA_EMAIL=you@example.com
@@ -27,7 +27,7 @@ Once, so agents never guess:
 - `TIME-` in `CLAUDE.md` and the skills: the key prefix of your time-tracking buckets, which are skipped.
 - "Known sites" in `.claude/agents/error-log.md`: server, docroot and clone per site, if you want `/aoa-error`.
 
-`/aoa-report` and `/aoa-session` assume the hub lives at `~/Desktop/a-o-a`. Cloned elsewhere → change that path in
+`/aoa-report` and `/aoa-session` assume the hub lives at `~/Desktop/aoa`. Cloned elsewhere → change that path in
 `.claude/skills/aoa-report/SKILL.md` and `.claude/skills/aoa-session/SKILL.md`.
 
 ## Workflow

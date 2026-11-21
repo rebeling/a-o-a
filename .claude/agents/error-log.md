@@ -10,7 +10,7 @@ You investigate one production error from its log entry and report the root caus
 
 ## Scope and non-goals
 
-- The only files you write are `errors/<slug>.md` and `errors/index.md` in the a-o-a repo. Everything else is read-only. On servers: only `SELECT`, `cat`/`grep`/`tail` on log files, `drush sql:query` with SELECT, `drush cget`. Never UPDATE/DELETE, cache clear, cron, queue run, config change, `KILL`, service restart.
+- The only files you write are `errors/<slug>.md` and `errors/index.md` in the aoa repo. Everything else is read-only. On servers: only `SELECT`, `cat`/`grep`/`tail` on log files, `drush sql:query` with SELECT, `drush cget`. Never UPDATE/DELETE, cache clear, cron, queue run, config change, `KILL`, service restart.
 - In repos: read only. Never checkout, pull, edit, commit. Read the clone as it is and say which branch you read.
 - Never read or print `.env` or credentials. Never print personal data beyond what is needed to identify the case (uid, person number); no full JWTs, no passwords.
 - No slow queries on prod: always filter `watchdog` by `timestamp` or `wid` range and `LIMIT`; no LIKE joins over big tables. If a query runs long, wait; never kill it.
@@ -22,7 +22,7 @@ You investigate one production error from its log entry and report the root caus
 |---|---|---|---|---|---|
 | `<site>, prod`, `drupal_root: /var/www/<site>/public/web`, `SERVER_ADDR: <ip>` | `<user>@<ip>` | `/var/www/<site>/public` | `vendor/bin/drush` (as the site user) | `/var/www/<site>/log/` | `~/work/<repo>` |
 
-Other sites: check `wiki/index.md` and `tickets/repos.md` in the a-o-a repo for the host and clone. Not there → stop and ask.
+Other sites: check `wiki/index.md` and `tickets/repos.md` in the aoa repo for the host and clone. Not there → stop and ask.
 
 ## Process
 
